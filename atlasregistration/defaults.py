@@ -19,41 +19,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""a toolkit and a pipeline for mouse atlas registration"""
-from importlib import reload as _reload  # DEBUG
+"""handling of default file names etc."""
+from pathlib import Path
 
-from . import (
-    types,
-    defaults,
-    alignment,
-    registration,
-    rois,
-    output,
-    batch,
-)
+from .types import PathLike
 
-# DEBUG
-_reload(types)
-_reload(defaults)
-_reload(alignment)
-_reload(registration)
-_reload(rois)
-_reload(output)
-_reload(batch)
 
-align_sessions = alignment.align_sessions
-write_aligned_sessions = alignment.write_aligned_sessions
+def animal_alignment_file(
+    rootdir: PathLike,
+    batch: str,
+    animal: str,
+) -> Path:
+    return Path(rootdir) / batch / animal / f"{animal}_ALIGNED.h5"
 
-register_animal_average_frames = registration.register_animal_average_frames
-write_atlas_registration = registration.write_atlas_registration
 
-load_reference_ROIs = rois.load_reference_ROIs
-warp_ROIs = rois.warp_ROIs
-overlay_ROI_borders = rois.overlay_ROI_borders
-
-load_batch_registration_file = output.load_batch_registration_file
-load_animal_alignment_file = output.load_animal_alignment_file
-
-align_sessions_for_animal = batch.align_sessions_for_animal
-register_atlas_for_batch = batch.register_atlas_for_batch
-export_registration_for_batch = batch.export_registration_for_batch
+def atlas_registration_file(
+    rootdir: PathLike,
+    batch: str,
+) -> Path:
+    return Path(rootdir) / batch / "ATLAS-REG.h5"

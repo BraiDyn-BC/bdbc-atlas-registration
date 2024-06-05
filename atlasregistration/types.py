@@ -19,41 +19,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""a toolkit and a pipeline for mouse atlas registration"""
-from importlib import reload as _reload  # DEBUG
+"""specification of some common types."""
 
-from . import (
-    types,
-    defaults,
-    alignment,
-    registration,
-    rois,
-    output,
-    batch,
-)
+from typing import Union
+from pathlib import Path
 
-# DEBUG
-_reload(types)
-_reload(defaults)
-_reload(alignment)
-_reload(registration)
-_reload(rois)
-_reload(output)
-_reload(batch)
-
-align_sessions = alignment.align_sessions
-write_aligned_sessions = alignment.write_aligned_sessions
-
-register_animal_average_frames = registration.register_animal_average_frames
-write_atlas_registration = registration.write_atlas_registration
-
-load_reference_ROIs = rois.load_reference_ROIs
-warp_ROIs = rois.warp_ROIs
-overlay_ROI_borders = rois.overlay_ROI_borders
-
-load_batch_registration_file = output.load_batch_registration_file
-load_animal_alignment_file = output.load_animal_alignment_file
-
-align_sessions_for_animal = batch.align_sessions_for_animal
-register_atlas_for_batch = batch.register_atlas_for_batch
-export_registration_for_batch = batch.export_registration_for_batch
+PathLike = Union[str, Path]
