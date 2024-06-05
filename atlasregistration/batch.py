@@ -27,7 +27,7 @@ import json as _json
 import h5py as _h5
 from tqdm import tqdm as _tqdm
 
-from rawdatareader import RawData
+import rawdatareader as _rr
 
 from .types import (
     PathLike,
@@ -41,9 +41,58 @@ from . import (
 )
 
 
+def process_batch(
+    batch: str,
+    rawdata_root: PathLike,
+    registration_root: PathLike,
+    rawdata_version: _rr.RawFileVersion = 'v1',
+    rawdata_errors: _rr.ErrorHandling = 'ignore',
+    hdf_compression: Optional[int] = None,
+    hclip: Optional[slice] = slice(None, 48),
+    verbose: bool = True,
+):
+    def _log(msg, end='\n'):
+        if verbose == True:
+            print(msg, end=end, flush=True)
+
+    sessions = _rr.collect_by_animal(
+        rootdir=rawdata_root,
+        batch=batch,
+        animal=None,
+        file_version=rawdata_version,
+        error_handling=rawdata_errors,
+    )
+    if len(sessions) == 0:
+        raise ValueError('no sessions found')
+    alignments = dict()
+    for animal, sessx in sessions.items():
+        _log(f"align: {animal}...", end=' ')
+        alignments[animal] = align_sessions_for_animal(
+            rootdir=registration_root,
+            animal_sessions=sessx,
+            batch=batch,
+            animal=animal,
+            compression=hdf_compression,
+        )
+        _log("done.")
+    register_atlas_for_batch(
+        rootdir=registration_root,
+        alignfiles=alignments,
+        batch=batch,
+        hclip=hclip,
+        compression=hdf_compression,
+    )
+    export_registration_for_batch(
+        rootdir=registration_root,
+        batch=batch,
+        compression=hdf_compression,
+        verbose=verbose
+    )
+
+
 def align_sessions_for_animal(
     rootdir: PathLike,
-    animal_sessions: Iterable[RawData],
+    animal_sessions: Iterable[_rr.RawData],
     batch: Optional[str] = None,
     animal: Optional[str] = None,
     compression: Optional[int] = 9,
@@ -61,22 +110,22 @@ def align_sessions_for_animal(
 
 def register_atlas_for_batch(
     rootdir: PathLike,
-    animalpaths: Dict[str, PathLike],
+    alignfiles: Dict[str, PathLike],
     batch: Optional[str] = None,
     hclip: Optional[slice] = slice(None, 48),
     compression: Optional[int] = 9,
 ) -> Path:
     if batch is None:
-        batch = _estimate_batch(animalpaths)
+        batch = _estimate_batch(alignfiles)
     rootdir = Path(rootdir)
-    reg = _registration.register_animal_average_frames(animalpaths, hclip=hclip)
+    reg = _registration.register_animal_average_frames(alignfiles, hclip=hclip)
     outpath = _defaults.atlas_registration_file(rootdir, batch=batch)
     _registration.write_atlas_registration(outpath, reg, compression=compression)
     return outpath
 
 
-def _estimate_batch(animalpaths: Dict[str, PathLike]) -> str:
-    paths = tuple(animalpaths.values())
+def _estimate_batch(alignfiles: Dict[str, PathLike]) -> str:
+    paths = tuple(alignfiles.values())
     if len(paths) == 0:
         raise ValueError('no animals found')
     with _h5.File(paths[0], 'r') as src:
@@ -90,12 +139,11 @@ def export_registration_for_batch(
     compression: Optional[int] = 9,
     verbose: bool = True,
 ):
-    rootdir = Path(rootdir)
     atlas = _rois.load_reference_ROIs()
-    batchfile = rootdir / batch / 'ATLAS-REG.h5'
+    batchfile = _defaults.atlas_registration_file(rootdir, batch)
     for animal_reg in _output.load_batch_registration_file(batch, batchfile):
-        animaldir = rootdir / animal_reg.batch / animal_reg.animal
-        animalfile = animaldir / f"{animal_reg.animal}_ALIGNED.h5"
+        animalfile = _defaults.animal_alignment_file(rootdir, batch, animal_reg.animal)
+        animaldir = animalfile.parent
 
         session_regs = _output.load_animal_alignment_file(animalfile)
         if verbose == True:
