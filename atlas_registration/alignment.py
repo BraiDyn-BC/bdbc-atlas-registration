@@ -31,7 +31,7 @@ import h5py as _h5
 
 import affine2d as _affine
 import affinealigner as _aa
-from rawdatareader import RawData
+from rawdata_explorer import RawData
 
 from .types import (
     PathLike,

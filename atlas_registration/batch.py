@@ -27,7 +27,7 @@ import json as _json
 import h5py as _h5
 from tqdm import tqdm as _tqdm
 
-import rawdatareader as _rr
+import rawdata_explorer as _rawx
 
 from .types import (
     PathLike,
@@ -45,8 +45,8 @@ def process_batch(
     batch: str,
     rawdata_root: PathLike,
     registration_root: PathLike,
-    rawdata_version: _rr.RawFileVersion = 'v1',
-    rawdata_errors: _rr.ErrorHandling = 'ignore',
+    rawdata_version: _rawx.RawFileVersion = 'v1',
+    rawdata_errors: _rawx.ErrorHandling = 'ignore',
     hdf_compression: Optional[int] = None,
     hclip: Optional[slice] = slice(None, 48),
     verbose: bool = True,
@@ -55,7 +55,7 @@ def process_batch(
         if verbose == True:
             print(msg, end=end, flush=True)
 
-    sessions = _rr.collect_by_animal(
+    sessions = _rawx.collect_by_animal(
         rootdir=rawdata_root,
         batch=batch,
         animal=None,
@@ -92,7 +92,7 @@ def process_batch(
 
 def align_sessions_for_animal(
     rootdir: PathLike,
-    animal_sessions: Iterable[_rr.RawData],
+    animal_sessions: Iterable[_rawx.RawData],
     batch: Optional[str] = None,
     animal: Optional[str] = None,
     compression: Optional[int] = 9,
