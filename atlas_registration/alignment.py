@@ -24,6 +24,7 @@ from typing import Iterable, Optional
 from typing_extensions import Self
 from pathlib import Path
 from collections import namedtuple as _namedtuple
+import sys as _sys
 import json as _json
 
 import numpy as _np
@@ -51,13 +52,18 @@ def align_sessions(
     sessions = tuple(sessions)
     meanimgs = []
     stdimgs = []
+    readsessions = []
     for sess in sessions:
-        m, s = sess.read_avg_frames()
-        meanimgs.append(m)
-        stdimgs.append(s)
+        try:
+            m, s = sess.read_avg_frames()
+            meanimgs.append(m)
+            stdimgs.append(s)
+            readsessions.append(sess)
+        except BaseException as e:
+            print(f"***{sess.base}: {e}", flush=True, file=_sys.stderr)
     transforms = _aa.align_images(meanimgs)
     return AlignedSessions(
-        sessions=sessions,
+        sessions=tuple(readsessions),
         mean=tuple(meanimgs),
         std=tuple(stdimgs),
         transform=tuple(transforms),

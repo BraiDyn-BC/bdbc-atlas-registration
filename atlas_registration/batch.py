@@ -47,7 +47,7 @@ def process_batch(
     registration_root: PathLike,
     rawdata_version: _rawx.RawFileVersion = 'v1',
     rawdata_errors: _rawx.ErrorHandling = 'ignore',
-    hdf_compression: Optional[int] = None,
+    hdf_compression: Optional[int] = 9,
     hclip: Optional[slice] = slice(None, 48),
     verbose: bool = True,
 ):
@@ -64,6 +64,7 @@ def process_batch(
     )
     if len(sessions) == 0:
         raise ValueError('no sessions found')
+    _count_batch(sessions, verbose=verbose)
     alignments = dict()
     for animal, sessx in sessions.items():
         _log(f"align: {animal}...", end=' ')
@@ -88,6 +89,20 @@ def process_batch(
         compression=hdf_compression,
         verbose=verbose
     )
+
+
+def _count_batch(
+    sessions: Dict[str, Iterable[_rawx.RawData]],
+    verbose: bool = True
+):
+    if verbose == False:
+        return
+    print(f"found {len(sessions)} animals:", end=' ')
+    indiv = []
+    for animal, sessx in sessions.items():
+        sessx = tuple(sessx)
+        indiv.append(f"{animal} ({len(sessx)})")
+    print(', '.join(indiv), flush=True)
 
 
 def align_sessions_for_animal(
