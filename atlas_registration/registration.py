@@ -43,7 +43,7 @@ from .types import (
 )
 
 
-class AtlasRegistration(_namedtuple('AtlasRegistration', ('metadata', 'images'))):
+class AtlasRegistration(_namedtuple('AtlasRegistration', ('metadata', 'images', 'landmarks'))):
     @property
     def num_images(self) -> int:
         return self.images.shape[0]
@@ -86,7 +86,8 @@ def register_animal_average_frames(
         alignment.columns = ('xx', 'xy', 'xc', 'yx', 'yy', 'yc')
         metadata = _pd.concat([metadata, alignment], axis=1)
         alignimgs = _iio.imread(aligndir / 'images_with_aligned_landmarks.mp4')
-        return AtlasRegistration(metadata, alignimgs)
+        landmarks = _pd.read_csv(str(landmarkdir / 'landmarks.csv'), header=[0, 1, 2]).droplevel(0, axis=1)
+        return AtlasRegistration(metadata, alignimgs, landmarks)
     finally:
         _shutil.rmtree(workdir)
 
@@ -133,3 +134,11 @@ def write_atlas_registration(
         ent.attrs['description'] = f"Affine transform matrices in the shape (N, 2, 3), representing the conersion from the reference atlas (H{rH}xW{rW}px) to the data (original H{oH}xW{oW}px)"
         ent = out.create_dataset('aligned_images', data=_np.stack(aligned_images, axis=0), **opts)
         ent.attrs['description'] = f"Aligned atlas landmarks overlaied on top of images, in the shape (N, {oH}, {oW})"
+        landmarks = out.create_group('landmarks')
+        landmarks.attrs['description'] = 'the estimated coordinates of the landmarks in the 512x512 space'
+        names = tuple(col[0] for col in reg.landmarks.columns)
+        for name in names:
+            pt = landmarks.create_group(name)
+            for ax in ('x', 'y', 'likelihood'):
+                pt.create_dataset(ax, data=reg.landmarks[name, ax].values, **opts)
+
