@@ -136,7 +136,7 @@ def write_atlas_registration(
         ent.attrs['description'] = f"Aligned atlas landmarks overlaied on top of images, in the shape (N, {oH}, {oW})"
         landmarks = out.create_group('landmarks')
         landmarks.attrs['description'] = 'the estimated coordinates of the landmarks in the 512x512 space'
-        names = tuple(col[0] for col in reg.landmarks.columns)
+        names = sorted(set(col[0] for col in reg.landmarks.columns))
         for name in names:
             pt = landmarks.create_group(name)
             for ax in ('x', 'y', 'likelihood'):
