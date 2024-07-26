@@ -38,3 +38,4 @@ def atlas_registration_file(
     batch: str,
 ) -> Path:
     return Path(rootdir) / batch / "ATLAS-REG.h5"
+

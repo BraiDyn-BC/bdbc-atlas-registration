@@ -32,7 +32,7 @@ import h5py as _h5
 
 import affine2d as _affine
 import affinealigner as _aa
-from rawdata_explorer import RawData
+from session_explorer import RawData
 
 from .types import (
     PathLike,
@@ -99,3 +99,4 @@ def write_aligned_sessions(
             for aligntype, images in formats.items():
                 ent_i = group.create_dataset(aligntype, data=images, chunks=(1, H, W), **opts)
                 ent_i.attrs['description'] = f"the {imgtype} images ({aligntype}), concatenated into the shape (N, H, W)."
+

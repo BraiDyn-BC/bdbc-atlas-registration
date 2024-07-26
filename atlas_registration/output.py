@@ -214,3 +214,4 @@ def write_dataset(
         group.attrs['description'] = "the registered atlas ROI masks for this session"
         for roi in dataset.rois_in_uint8():
             roi._write_hdf(parent=group, **opts)
+

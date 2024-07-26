@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 """batch processing functions"""
 from typing import Iterable, Optional, Dict
 from pathlib import Path
@@ -27,7 +28,7 @@ import json as _json
 import h5py as _h5
 from tqdm import tqdm as _tqdm
 
-import rawdata_explorer as _rawx
+import session_explorer as _sessx
 
 from .types import (
     PathLike,
@@ -45,8 +46,8 @@ def process_batch(
     batch: str,
     rawdata_root: PathLike,
     registration_root: PathLike,
-    rawdata_version: _rawx.RawFileVersion = 'v1',
-    rawdata_errors: _rawx.ErrorHandling = 'ignore',
+    rawdata_version: _sessx.rawdata.RawFileVersion = 'v1',
+    rawdata_errors: _sessx.core.ErrorHandling = 'ignore',
     hdf_compression: Optional[int] = 9,
     hclip: Optional[slice] = slice(None, 48),
     verbose: bool = True,
@@ -55,7 +56,7 @@ def process_batch(
         if verbose == True:
             print(msg, end=end, flush=True)
 
-    sessions = _rawx.collect_by_animal(
+    sessions = _sessx.collect_by_animal(
         rootdir=rawdata_root,
         batch=batch,
         animal=None,
@@ -92,7 +93,7 @@ def process_batch(
 
 
 def _count_batch(
-    sessions: Dict[str, Iterable[_rawx.RawData]],
+    sessions: Dict[str, Iterable[_sessx.RawData]],
     verbose: bool = True
 ):
     if verbose == False:
@@ -107,7 +108,7 @@ def _count_batch(
 
 def align_sessions_for_animal(
     rootdir: PathLike,
-    animal_sessions: Iterable[_rawx.RawData],
+    animal_sessions: Iterable[_sessx.RawData],
     batch: Optional[str] = None,
     animal: Optional[str] = None,
     compression: Optional[int] = 9,
@@ -167,3 +168,4 @@ def export_registration_for_batch(
             outpath = animaldir / f"{session_reg.name}_mesoscaler.h5"
             data = _output.prepare_data_to_store(session_reg, animal_reg, atlas=atlas)
             _output.write_dataset(outpath, data, compression=compression)
+

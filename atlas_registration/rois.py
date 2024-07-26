@@ -81,3 +81,4 @@ def overlay_ROI_borders(
         border = _aa.compute.mask_to_border(roi.mask, border_width=border_width)
         borders.append(_aa.compute.color_mask(border, color=border_color, alpha=border_alpha))
     return _aa.compute.overlay(base_image, *borders)
+

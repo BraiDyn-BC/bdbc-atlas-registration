@@ -58,3 +58,4 @@ align_sessions_for_animal = batch.align_sessions_for_animal
 register_atlas_for_batch = batch.register_atlas_for_batch
 export_registration_for_batch = batch.export_registration_for_batch
 process_batch = batch.process_batch
+
