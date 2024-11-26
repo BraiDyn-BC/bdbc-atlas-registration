@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 """a toolkit and a pipeline for mouse atlas registration"""
 from importlib import reload as _reload  # DEBUG
 
@@ -58,4 +59,3 @@ align_sessions_for_animal = batch.align_sessions_for_animal
 register_atlas_for_batch = batch.register_atlas_for_batch
 export_registration_for_batch = batch.export_registration_for_batch
 process_batch = batch.process_batch
-

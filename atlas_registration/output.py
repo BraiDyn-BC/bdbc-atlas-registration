@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 """distribution of registration results as mesoscaler-format HDF5 files"""
 
 from typing import Optional, Dict, Iterable, Tuple, Generator
@@ -214,4 +215,3 @@ def write_dataset(
         group.attrs['description'] = "the registered atlas ROI masks for this session"
         for roi in dataset.rois_in_uint8():
             roi._write_hdf(parent=group, **opts)
-

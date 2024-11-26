@@ -168,4 +168,3 @@ def export_registration_for_batch(
             outpath = animaldir / f"{session_reg.name}_mesoscaler.h5"
             data = _output.prepare_data_to_store(session_reg, animal_reg, atlas=atlas)
             _output.write_dataset(outpath, data, compression=compression)
-

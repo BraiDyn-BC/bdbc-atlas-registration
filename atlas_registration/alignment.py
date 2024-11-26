@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 """within-animal, across-session alignment procedures"""
 from typing import Iterable, Optional
 from typing_extensions import Self
@@ -99,4 +100,3 @@ def write_aligned_sessions(
             for aligntype, images in formats.items():
                 ent_i = group.create_dataset(aligntype, data=images, chunks=(1, H, W), **opts)
                 ent_i.attrs['description'] = f"the {imgtype} images ({aligntype}), concatenated into the shape (N, H, W)."
-

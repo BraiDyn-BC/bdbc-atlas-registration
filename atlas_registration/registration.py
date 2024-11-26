@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 """animal-by-animal registration to Allen CCF atlas using MesoNet"""
 
 from typing import Dict, Optional
@@ -141,4 +142,3 @@ def write_atlas_registration(
             pt = landmarks.create_group(name)
             for ax in ('x', 'y', 'likelihood'):
                 pt.create_dataset(ax, data=reg.landmarks[name, ax].values, **opts)
-
