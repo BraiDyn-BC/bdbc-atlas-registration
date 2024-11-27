@@ -22,7 +22,7 @@
 
 """procedures related to handling of ROIs"""
 
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional
 
 import numpy as _np
 
@@ -31,7 +31,7 @@ import affinealigner as _aa
 import mesoscaler as _meso
 
 
-def load_reference_ROIs() -> Tuple[_meso.rois.ROI]:
+def load_reference_ROIs() -> tuple[_meso.rois.ROI]:
     outlines = _meso.rois.load_reference_outlines().rois
     atlas = _meso.rois.load_reference_ROIs().rois
 
@@ -48,7 +48,7 @@ def warp_ROIs(
     transform: _affine.AffineMatrix,
     width: int,
     height: Optional[int] = None,
-) -> Tuple[_meso.rois.ROI]:
+) -> tuple[_meso.rois.ROI]:
     if height is None:
         height = width
     warped = []

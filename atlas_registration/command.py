@@ -20,28 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""handling of default file names etc."""
-from pathlib import Path
+"""command-line interface"""
 
-import bdbc_session_explorer as _sessx
+from argparse import ArgumentParser as _ArgumentParser
 
-from .types import PathLike
+from . import (
+    batch as _batch,
+)
 
-REGISTRATION_HCLIP: slice = slice(None, 48)
+parser = _ArgumentParser('batch-atlas-registration')
 
-
-def animal_alignment_file(
-    rootdir: PathLike,
-    batch: str,
-    animal: str,
-) -> Path:
-    rootdir = _sessx.mesoscaler_root_dir(mesoroot=rootdir)
-    return rootdir / batch / animal / f"{animal}_ALIGNED.h5"
+parser.add_argument('batch', help='name of the batch')
+parser.add_argument('-q', '--quiet', action='store_false', dest='verbose', help='run without any verbose outputs')
 
 
-def atlas_registration_file(
-    rootdir: PathLike,
-    batch: str,
-) -> Path:
-    rootdir = _sessx.mesoscaler_root_dir(mesoroot=rootdir)
-    return rootdir / batch / "ATLAS-REG.h5"
+def run(*args):
+    if len(args) == 0:
+        args = None
+    spec = parser.parse_args(args)
+    _batch.process_batch(**vars(spec))

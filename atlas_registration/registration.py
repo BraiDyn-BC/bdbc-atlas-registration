@@ -22,7 +22,7 @@
 
 """animal-by-animal registration to Allen CCF atlas using MesoNet"""
 
-from typing import Dict, Optional
+from typing import Optional
 from pathlib import Path
 from collections import namedtuple as _namedtuple
 import json as _json
@@ -42,6 +42,9 @@ import mesoscaler as _meso
 from .types import (
     PathLike,
 )
+from .defaults import (
+    REGISTRATION_HCLIP,
+)
 
 
 class AtlasRegistration(_namedtuple('AtlasRegistration', ('metadata', 'images', 'landmarks'))):
@@ -59,8 +62,8 @@ class AtlasRegistration(_namedtuple('AtlasRegistration', ('metadata', 'images', 
 
 
 def register_animal_average_frames(
-    animalpaths: Dict[str, PathLike],
-    hclip: Optional[slice] = slice(None, 48),
+    animalpaths: dict[str, PathLike],
+    hclip: Optional[slice] = REGISTRATION_HCLIP,
 ) -> AtlasRegistration:
     workdir = Path(_tempfile.mkdtemp(prefix='mesoscaler'))
     imgdir = workdir / 'images'

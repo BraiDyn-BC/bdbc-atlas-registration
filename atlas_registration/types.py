@@ -22,7 +22,8 @@
 
 """specification of some common types."""
 
-from typing import Union
+from typing import Union, Iterable
 from pathlib import Path
 
 PathLike = Union[str, Path]
+PathsLike = Union[PathLike, Iterable[PathLike]]

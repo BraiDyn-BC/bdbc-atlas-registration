@@ -24,7 +24,7 @@
 from typing import Iterable, Optional
 from typing_extensions import Self
 from pathlib import Path
-from collections import namedtuple as _namedtuple
+from dataclasses import dataclass
 import sys as _sys
 import json as _json
 
@@ -33,38 +33,55 @@ import h5py as _h5
 
 import affine2d as _affine
 import affinealigner as _aa
-from session_explorer import RawData
+from bdbc_session_explorer import RawData
 
 from .types import (
     PathLike,
 )
 
 
-class AlignedSessions(_namedtuple('AlignedSessions', ('sessions', 'mean', 'std', 'transform'))):
+@dataclass
+class AlignedSessions:
+    datafiles: tuple[RawData]
+    mean: tuple[_aa.types.Image]
+    std: tuple[_aa.types.Image]
+    transform: tuple[_aa.types.AffineMatrix]
+
+    def __post_init__(self):
+        self.datafiles = tuple(self.datafiles)
+        self.mean = tuple(self.mean)
+        self.std = tuple(self.std)
+        self.transform = tuple(self.transform)
+
     def scaled(self) -> Self:
         mean_scaled = [_aa.compute.scale_image(img) for img in self.mean]
         std_scaled  = [_aa.compute.scale_image(img) for img in self.std]
-        return self._replace(mean=mean_scaled, std=std_scaled)
+        return self.__class__(
+            datafiles=self.datafiles,
+            mean=mean_scaled,
+            std=std_scaled,
+            transform=self.transform,
+        )
 
 
 def align_sessions(
-    sessions: Iterable[RawData],
+    datafiles: Iterable[RawData],
 ) -> AlignedSessions:
-    sessions = tuple(sessions)
+    datafiles = tuple(datafiles)
     meanimgs = []
     stdimgs = []
-    readsessions = []
-    for sess in sessions:
+    read_files = []
+    for datafile in datafiles:
         try:
-            m, s = sess.read_avg_frames()
+            m, s = datafile.read_avg_frames()
             meanimgs.append(m)
             stdimgs.append(s)
-            readsessions.append(sess)
+            read_files.append(datafile)
         except BaseException as e:
-            print(f"***{sess.base}: {e}", flush=True, file=_sys.stderr)
+            print(f"***{datafile.session.shortbase}: {e}", flush=True, file=_sys.stderr)
     transforms = _aa.align_images(meanimgs)
     return AlignedSessions(
-        sessions=tuple(readsessions),
+        datafiles=tuple(read_files),
         mean=tuple(meanimgs),
         std=tuple(stdimgs),
         transform=tuple(transforms),
@@ -90,7 +107,7 @@ def write_aligned_sessions(
         outfile.parent.mkdir(parents=True)
     opts = dict(compression=compression)
     with _h5.File(outfile, 'w') as out:
-        out.attrs['sessions'] = _json.dumps([sess.metadata() for sess in aligned.sessions])
+        out.attrs['sessions'] = _json.dumps([sess.metadata() for sess in aligned.datafiles])
         out.attrs['image_width'] = W
         out.attrs['image_height'] = H
         ent_t = out.create_dataset('transform', data=transform, **opts)

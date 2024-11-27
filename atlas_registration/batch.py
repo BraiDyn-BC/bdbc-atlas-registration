@@ -21,17 +21,18 @@
 # SOFTWARE.
 
 """batch processing functions"""
-from typing import Iterable, Optional, Dict
+from typing import Iterable, Optional
 from pathlib import Path
 import json as _json
 
 import h5py as _h5
 from tqdm import tqdm as _tqdm
 
-import session_explorer as _sessx
+import bdbc_session_explorer as _sessx
 
 from .types import (
     PathLike,
+    PathsLike,
 )
 from . import (
     defaults as _defaults,
@@ -44,34 +45,51 @@ from . import (
 
 def process_batch(
     batch: str,
-    rawdata_root: PathLike,
-    registration_root: PathLike,
-    rawdata_version: _sessx.rawdata.RawFileVersion = 'v1',
+    sessions_root: Optional[PathLike] = None,
+    rawdata_root: Optional[PathsLike] = None,
+    registration_root: Optional[PathLike] = None,
+    rawdata_version: _sessx.rawdata.RawFileVersion = 'v2',
     rawdata_errors: _sessx.core.ErrorHandling = 'ignore',
     hdf_compression: Optional[int] = 9,
-    hclip: Optional[slice] = slice(None, 48),
+    hclip: Optional[slice] = _defaults.REGISTRATION_HCLIP,
     verbose: bool = True,
 ):
     def _log(msg, end='\n'):
         if verbose == True:
             print(msg, end=end, flush=True)
 
-    sessions = _sessx.collect_by_animal(
-        rootdir=rawdata_root,
+    # collect sessions by animal
+    # FIXME: here it does not have to be Rawdata instances
+    # (can be Session instances instead)
+    sessions: dict[str, list[_sessx.RawData]] = dict()
+    for sess in _sessx.iterate_sessions(
         batch=batch,
-        animal=None,
-        file_version=rawdata_version,
-        error_handling=rawdata_errors,
-    )
+        sessions_root_dir=sessions_root,
+        verbose=verbose,
+    ):
+        if not sess.has_rawdata():
+            continue
+        rawdata = _sessx.rawdata_from_session(
+            sess,
+            rawroot=rawdata_root,
+            file_version=rawdata_version,
+            error_handling=rawdata_errors,
+        )
+        if rawdata.path is None:
+            raise FileNotFoundError(f'failed to locate rawdata for: {sess.shortbase}')
+        if sess.animal not in sessions.keys():
+            sessions[sess.animal] = []
+        sessions[sess.animal].append(rawdata)
     if len(sessions) == 0:
         raise ValueError('no sessions found')
     _count_batch(sessions, verbose=verbose)
+
     alignments = dict()
-    for animal, sessx in sessions.items():
+    for animal, rawfiles in sessions.items():
         _log(f"align: {animal}...", end=' ')
         alignments[animal] = align_sessions_for_animal(
             rootdir=registration_root,
-            animal_sessions=sessx,
+            animal_rawdata_files=rawfiles,
             batch=batch,
             animal=animal,
             compression=hdf_compression,
@@ -93,7 +111,7 @@ def process_batch(
 
 
 def _count_batch(
-    sessions: Dict[str, Iterable[_sessx.RawData]],
+    sessions: dict[str, Iterable[_sessx.RawData]],
     verbose: bool = True
 ):
     if verbose == False:
@@ -108,17 +126,17 @@ def _count_batch(
 
 def align_sessions_for_animal(
     rootdir: PathLike,
-    animal_sessions: Iterable[_sessx.RawData],
+    animal_rawdata_files: Iterable[_sessx.RawData],
     batch: Optional[str] = None,
     animal: Optional[str] = None,
     compression: Optional[int] = 9,
 ) -> Path:
-    sessions = tuple(animal_sessions)
+    rawdata_set = tuple(animal_rawdata_files)
     if batch is None:
-        batch = sessions[0].batch
+        batch = rawdata_set[0].session.batch
     if animal is None:
-        animal = sessions[0].animal
-    aligned = _alignment.align_sessions(sessions)
+        animal = rawdata_set[0].session.animal
+    aligned = _alignment.align_sessions(rawdata_set)
     outpath = _defaults.animal_alignment_file(rootdir, batch=batch, animal=animal)
     _alignment.write_aligned_sessions(outpath, aligned, compression=compression)
     return outpath
@@ -126,21 +144,20 @@ def align_sessions_for_animal(
 
 def register_atlas_for_batch(
     rootdir: PathLike,
-    alignfiles: Dict[str, PathLike],
+    alignfiles: dict[str, PathLike],
     batch: Optional[str] = None,
-    hclip: Optional[slice] = slice(None, 48),
+    hclip: Optional[slice] = _defaults.REGISTRATION_HCLIP,
     compression: Optional[int] = 9,
 ) -> Path:
     if batch is None:
         batch = _estimate_batch(alignfiles)
-    rootdir = Path(rootdir)
     reg = _registration.register_animal_average_frames(alignfiles, hclip=hclip)
     outpath = _defaults.atlas_registration_file(rootdir, batch=batch)
     _registration.write_atlas_registration(outpath, reg, compression=compression)
     return outpath
 
 
-def _estimate_batch(alignfiles: Dict[str, PathLike]) -> str:
+def _estimate_batch(alignfiles: dict[str, PathLike]) -> str:
     paths = tuple(alignfiles.values())
     if len(paths) == 0:
         raise ValueError('no animals found')
@@ -161,10 +178,10 @@ def export_registration_for_batch(
         animalfile = _defaults.animal_alignment_file(rootdir, batch, animal_reg.animal)
         animaldir = animalfile.parent
 
-        session_regs = _output.load_animal_alignment_file(animalfile)
+        session_regs: tuple[_output.SessionAlignment] = _output.load_animal_alignment_file(animalfile)
         if verbose == True:
             session_regs = _tqdm(session_regs, desc=animal_reg.animal)
         for session_reg in session_regs:
             outpath = animaldir / f"{session_reg.name}_mesoscaler.h5"
-            data = _output.prepare_data_to_store(session_reg, animal_reg, atlas=atlas)
+            data: _output.StoredDataset = _output.prepare_data_to_store(session_reg, animal_reg, atlas=atlas)
             _output.write_dataset(outpath, data, compression=compression)

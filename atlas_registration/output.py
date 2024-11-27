@@ -22,9 +22,10 @@
 
 """distribution of registration results as mesoscaler-format HDF5 files"""
 
-from typing import Optional, Dict, Iterable, Tuple, Generator
+from typing import Optional, Iterable, Iterator, Union
 from pathlib import Path
-from collections import namedtuple as _namedtuple
+from dataclasses import dataclass
+from datetime import datetime
 import json as _json
 
 import numpy as _np
@@ -41,8 +42,57 @@ from . import (
     rois as _rois,
 )
 
+SHORT_DATE_FMT = '%y%m%d'
+LONG_DATE_FMT = '%Y-%m-%d'
 
-class AnimalAtlasRegistration(_namedtuple('AnimalAtlas', ('batch', 'animal', 'image', 'from_ref'))):
+SHORT_TYPES = {
+    'task': 'task',
+    'resting-state': 'rest',
+    'sensory-stim': 'ss',
+}
+
+LONG_TYPES = {
+    'task': 'task',
+    'rest': 'resting-state',
+    'ss': 'sensory-stim',
+}
+
+
+def parse_date(date: Union[str, datetime]) -> datetime:
+    if isinstance(date, str):
+        if '-' in date:
+            return datetime.strptime(date, LONG_DATE_FMT)
+        else:
+            return datetime.strptime(date, SHORT_DATE_FMT)
+    else:
+        return date
+
+
+def short_session_type(session_type: str) -> str:
+    if session_type in SHORT_TYPES.values():
+        return session_type
+    elif session_type in SHORT_TYPES.keys():
+        return SHORT_TYPES[session_type]
+    else:
+        raise ValueError(f"unknown session type: {session_type}")
+
+
+def long_session_type(session_type: str) -> str:
+    if session_type in LONG_TYPES.values():
+        return session_type
+    elif session_type in LONG_TYPES.keys():
+        return LONG_TYPES[session_type]
+    else:
+        raise ValueError(f"unknown session type: {session_type}")
+
+
+@dataclass
+class AnimalAtlasRegistration:
+    batch: str
+    animal: str
+    image: _aa.types.Image
+    from_ref: _aa.types.AffineMatrix
+
     @property
     def width(self):
         return self.image.shape[1]
@@ -52,7 +102,21 @@ class AnimalAtlasRegistration(_namedtuple('AnimalAtlas', ('batch', 'animal', 'im
         return self.image.shape[0]
 
 
-class MultiSessionAlignment(_namedtuple('SessionAtlas', ('batch', 'animal', 'date', 'type', 'image', 'aligned', 'from_animal'))):
+# TODO: use the Session instance to hold the session info
+@dataclass
+class SessionAlignment:
+    batch: str
+    animal: str
+    date: datetime
+    type: str
+    image: _aa.types.Image
+    aligned: _aa.types.Image
+    from_animal: _aa.types.AffineMatrix
+
+    def __post_init__(self):
+        self.date = parse_date(self.date)
+        self.type = short_session_type(self.type)
+
     @property
     def width(self) -> int:
         return self.image.shape[1]
@@ -62,35 +126,45 @@ class MultiSessionAlignment(_namedtuple('SessionAtlas', ('batch', 'animal', 'dat
         return self.image.shape[0]
 
     @property
+    def shortdate(self) -> str:
+        return self.date.strftime(SHORT_DATE_FMT)
+
+    @property
+    def longdate(self) -> str:
+        return self.date.strftime(LONG_DATE_FMT)
+
+    @property
+    def shorttype(self) -> str:
+        return self.type
+
+    @property
+    def longtype(self) -> str:
+        return long_session_type(self.type)
+
+    @property
     def name(self) -> str:
         if self.type == 'task':
             suffix = ''
         else:
-            suffix = f"_{self.type}"
-        return f"{self.date}_{self.animal}{suffix}"
+            suffix = f"_{self.shorttype}"
+        return f"{self.shortdate}_{self.animal}{suffix}"
 
-    @property
-    def longtype(self) -> str:
-        if self.type == 'ss':
-            return 'sensory-stim'
-        elif self.type == 'rest':
-            return 'resting-state'
-        elif self.type == 'task':
-            return 'task'
-        else:
-            raise ValueError(f"unexpected type: {self.type}")
-
-    def metadata(self) -> Dict[str, str]:
+    def metadata(self) -> dict[str, str]:
         return {
             'batch': self.batch,
             'animal': self.animal,
-            'date': self.date,
+            'date': self.date.strftime('%Y-%m-%d'),
             'type': self.longtype,
         }
 
 
-class StoredDataset(_namedtuple('StoredDataset', ('session', 'from_ref', 'rois'))):
-    def list_roi_names(self) -> Tuple[str]:
+@dataclass
+class StoredDataset:
+    session: SessionAlignment
+    from_ref: _aa.types.AffineMatrix
+    rois: tuple[_meso.rois.ROI]
+
+    def list_roi_names(self) -> tuple[str]:
         names = []
         for roi in self.rois:
             if roi.name not in names:
@@ -115,7 +189,7 @@ class StoredDataset(_namedtuple('StoredDataset', ('session', 'from_ref', 'rois')
             bordered = bordered.mean(2).astype(_np.uint8)
         return bordered
 
-    def rois_in_uint8(self) -> Generator[_meso.rois.ROI, None, None]:
+    def rois_in_uint8(self) -> Iterator[_meso.rois.ROI]:
         for roi in self.rois:
             yield _meso.rois.ROI(
                 name=roi.name,
@@ -129,13 +203,13 @@ class StoredDataset(_namedtuple('StoredDataset', ('session', 'from_ref', 'rois')
 def load_batch_registration_file(
     batch: str,
     regfile: PathLike,
-) -> Tuple[AnimalAtlasRegistration]:
+) -> tuple[AnimalAtlasRegistration]:
     regs = []
     with _h5.File(regfile, 'r') as src:
         animals = _json.loads(src.attrs['animals'])
         for i, animal in enumerate(animals):
-            animal_img = _np.array(src['aligned_images'][i, :, :])
-            atlas_to_animal = _np.array(src['ref512_to_animal'][i, :, :])
+            animal_img: _aa.types.Image = _np.array(src['aligned_images'][i, :, :])
+            atlas_to_animal: _aa.types.AffineMatrix = _np.array(src['ref512_to_animal'][i, :, :])
             reg = AnimalAtlasRegistration(
                 batch=batch,
                 animal=animal,
@@ -148,15 +222,15 @@ def load_batch_registration_file(
 
 def load_animal_alignment_file(
     regfile: PathLike,
-) -> Tuple[MultiSessionAlignment]:
+) -> tuple[SessionAlignment]:
     regs = []
     with _h5.File(regfile, 'r') as src:
         sessions = _json.loads(src.attrs['sessions'])
         aligned  = _np.array(src['mean/aligned']).mean(0)
         for i, sess in enumerate(sessions):
-            session_img = _np.array(src['mean/original'][i, :, :])
-            to_animal = _np.array(src['transform'][i, :, :])
-            reg = MultiSessionAlignment(
+            session_img: _aa.types.Image = _np.array(src['mean/original'][i, :, :])
+            to_animal: _aa.types.AffineMatrix = _np.array(src['transform'][i, :, :])
+            reg = SessionAlignment(
                 batch=sess['batch'],
                 animal=sess['animal'],
                 date=sess['date'],
@@ -170,7 +244,7 @@ def load_animal_alignment_file(
 
 
 def prepare_data_to_store(
-    session: MultiSessionAlignment,
+    session: SessionAlignment,
     animal: AnimalAtlasRegistration,
     atlas: Optional[Iterable[_meso.rois.ROI]] = None,
 ) -> StoredDataset:
